@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoCheck | Reloj Checador Móvil con GPS e Informes</title>
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Header Principal -->
+    <header class="app-header">
+        <div class="brand">
+            <div class="brand-icon">⏰</div>
+            <div class="brand-title">
+                <h1>GeoCheck Móvil</h1>
+                <p>Reloj Checador con Posición GPS, Geocercas Perimetrales e Informes Ejecutivos</p>
+            </div>
+        </div>
+
+        <div class="header-status" style="display:flex; gap:10px; align-items:center;">
+            <div id="badgeDatosMoviles" class="btn-whatsapp-status online" style="display:none; cursor:pointer;" onclick="copiarUrlDatosMoviles()" title="Clic para copiar URL pública de datos móviles">
+                <span class="status-indicator-dot online"></span>
+                <span id="badgeDatosMovilesTexto">📶 DATOS MÓVILES: ACTIVO</span>
+            </div>
+            <a href="/downloads/ChecadorApp.apk" download="ChecadorApp.apk" class="btn-whatsapp-status online" style="text-decoration:none;">
+                <span class="status-indicator-dot online"></span>
+                <span>📲 DESCARGAR APK ANDROID</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Barra de Navegación por Pestañas -->
+    <nav class="app-nav">
+        <button class="nav-tab active" data-tab="dashboard">
+            <span>📊</span> Monitoreo en Vivo & Mapa GPS
+        </button>
+        <button class="nav-tab" data-tab="apk">
+            <span>📲</span> App Móvil (Descarga APK)
+        </button>
+        <button class="nav-tab" data-tab="reportes">
+            <span>📈</span> Informes & Reportes
+        </button>
+        <button class="nav-tab" data-tab="empleados">
+            <span>👥</span> Catálogo de Empleados
+        </button>
+        <button class="nav-tab" data-tab="sucursales">
+            <span>🏢</span> Sucursales & Geocercas
+        </button>
+        <button class="nav-tab" data-tab="configuracion">
+            <span>⚙️</span> Configuración
+        </button>
+    </nav>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+
+        <!-- ============================================== -->
+        <!-- PESTAÑA 1: MONITOREO EN VIVO & MAPA GPS        -->
+        <!-- ============================================== -->
+        <section id="dashboard" class="tab-pane active">
+            <!-- Tarjetas KPI -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon green">👥</div>
+                    <div class="stat-info">
+                        <div class="stat-num" id="statTotalEmpleados">--</div>
+                        <div class="stat-label">Colaboradores Activos</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue">📍</div>
+                    <div class="stat-info">
+                        <div class="stat-num" id="statChecadasHoy">--</div>
+                        <div class="stat-label">Marcajes Registrados Hoy</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green">⏱️</div>
+                    <div class="stat-info">
+                        <div class="stat-num" id="statATiempo">--</div>
+                        <div class="stat-label">Entradas a Tiempo</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon amber">⚠️</div>
+                    <div class="stat-info">
+                        <div class="stat-num" id="statRetardos">--</div>
+                        <div class="stat-label">Retardos Detectados</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon red">🚨</div>
+                    <div class="stat-info">
+                        <div class="stat-num" id="statFueraZona">--</div>
+                        <div class="stat-label">Fuera de Geocerca GPS</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mapa Interactivo y Feed en Vivo -->
+            <div class="dashboard-split">
+                <!-- Mapa Leaflet -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h2>🗺️ Mapa GPS de Sucursales y Marcajes en Tiempo Real</h2>
+                        <button class="btn btn-secondary btn-sm" onclick="loadDashboard(true)">🔄 Refrescar Mapa</button>
+                    </div>
+                    <div class="panel-body" style="padding:0;">
+                        <div id="mapContainer"></div>
+                        <div class="map-legend">
+                            <div class="legend-item"><span class="legend-dot" style="background:#10B981;"></span> Checada en Zona / A Tiempo</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#F59E0B;"></span> Retardo</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#EF4444;"></span> Fuera de Geocerca GPS</div>
+                            <div class="legend-item"><span class="legend-dot" style="background:#2563EB;"></span> Círculo: Radio Permitido de Sucursal</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Feed en Vivo -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h2>⚡ Actividad Reciente de Checadas</h2>
+                        <span class="badge badge-success">En directo</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="live-feed-list" id="liveFeedList">
+                            <!-- Items cargados dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- PESTAÑA 2: APP MÓVIL (DESCARGA DE APK & GUÍA)  -->
+        <!-- ============================================== -->
+        <section id="apk" class="tab-pane">
+            <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:1.5rem; align-items:start;">
+                
+                <!-- Tarjeta Principal de Descarga e Instrucciones -->
+                <div>
+                    <!-- Banner de Descarga -->
+                    <div class="panel-card" style="margin-bottom:1.25rem; border:2px solid #10b981;">
+                        <div class="panel-body" style="display:flex; gap:20px; align-items:center; flex-wrap:wrap; padding:1.5rem;">
+                            <div style="width:70px; height:70px; background:#d1fae5; border-radius:18px; display:flex; align-items:center; justify-content:center; font-size:38px; color:#047857; flex-shrink:0;">
+                                🤖
+                            </div>
+                            <div style="flex:1; min-width:260px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <h2 style="font-size:1.35rem; color:#0f172a; font-weight:800;">GeoCheck Móvil v1.0.0 (APK Oficial)</h2>
+                                    <span class="badge badge-success">Firmado & Listo</span>
+                                </div>
+                                <p style="color:#64748b; font-size:0.9rem; margin-top:4px;">
+                                    Aplicación oficial para instalar en los teléfonos Android de los empleados. Captura posición GPS por satélite y valida automáticamente las geocercas perimetrales de cada sede.
+                                </p>
+                                <div style="display:flex; gap:16px; margin-top:12px; font-size:0.82rem; color:#475569;">
+                                    <span>📦 <strong>Formato:</strong> APK Android (.apk)</span>
+                                    <span>⚖️ <strong>Tamaño:</strong> 29 KB (Ultra Ligero)</span>
+                                    <span>📱 <strong>Requisitos:</strong> Android 5.0 a 15+</span>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/downloads/ChecadorApp.apk" download="ChecadorApp.apk" class="btn btn-primary" style="padding:14px 24px; font-size:1rem; font-weight:800; border-radius:12px; box-shadow:0 6px 16px rgba(5,150,105,0.3);">
+                                    📥 Descargar ChecadorApp.apk
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Guía de Instalación Paso a Paso -->
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h2>📋 Pasos para Instalar en el Dispositivo del Empleado</h2>
+                        </div>
+                        <div class="panel-body" style="display:flex; flex-direction:column; gap:14px; font-size:0.9rem; line-height:1.5;">
+                            
+                            <div style="display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:30px; height:30px; border-radius:50%; background:#047857; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0;">1</div>
+                                <div>
+                                    <strong>Descargar el archivo APK en el teléfono:</strong><br>
+                                    Envía el archivo <code>ChecadorApp.apk</code> al celular del empleado (por correo, Google Drive, cable USB, o abriendo esta misma página en el navegador del celular).
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:30px; height:30px; border-radius:50%; background:#047857; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0;">2</div>
+                                <div>
+                                    <strong>Instalar la aplicación:</strong><br>
+                                    Abre el archivo descargado en el teléfono y presiona <strong>Instalar</strong>. Si Android solicita confirmación para <em>"Instalar aplicaciones de fuentes desconocidas"</em>, toca <strong>Permitir</strong>.
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:30px; height:30px; border-radius:50%; background:#047857; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0;">3</div>
+                                <div>
+                                    <strong>Conceder permiso de Ubicación GPS:</strong><br>
+                                    Al abrir la app por primera vez, selecciona <strong>"Mientras la app está en uso"</strong> para que pueda calcular la distancia exacta a la sucursal.
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:30px; height:30px; border-radius:50%; background:#047857; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0;">4</div>
+                                <div>
+                                    <strong>Configurar la dirección del servidor (Solo 1 vez):</strong><br>
+                                    En la app, presiona el botón <strong>⚙️ Servidor</strong> y escribe la dirección IP o URL de tu sistema central (ejemplo: <code id="txtSugerenciaIp">http://192.168.1.100:5097</code>).
+                                </div>
+                            </div>
+
+                            <div style="display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:30px; height:30px; border-radius:50%; background:#047857; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; flex-shrink:0;">5</div>
+                                <div>
+                                    <strong>¡Listo para Checar!</strong><br>
+                                    El empleado solo selecciona su nombre y presiona 🟢 <strong>REGISTRAR ENTRADA</strong>, 🍔 <strong>COMIDA</strong> o 🔴 <strong>SALIDA</strong>.
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mockup Interactivo del Celular Android -->
+                <div>
+                    <div class="panel-card">
+                        <div class="panel-header">
+                            <h2>📱 Vista Previa de la App Móvil</h2>
+                            <span class="badge badge-info">Pantalla Real</span>
+                        </div>
+                        <div class="panel-body" style="padding:1rem; display:flex; justify-content:center;">
+                            <!-- Marco de Smartphone -->
+                            <div style="width:320px; background:#1e293b; border-radius:32px; padding:10px; box-shadow:0 20px 30px rgba(0,0,0,0.25);">
+                                <div style="background:#f1f5f9; border-radius:24px; overflow:hidden; font-size:12px;">
+                                    
+                                    <!-- Header App -->
+                                    <div style="background:#047857; color:white; padding:14px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                            <strong style="font-size:14px;">GeoCheck Móvil</strong>
+                                            <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:10px; font-size:10px;">⚙️ Servidor</span>
+                                        </div>
+                                        <small style="color:#a7f3d0; font-size:10px;">Reloj Checador con Posición GPS</small>
+                                    </div>
+
+                                    <div style="padding:12px; display:flex; flex-direction:column; gap:10px;">
+                                        
+                                        <!-- Card Colaborador -->
+                                        <div style="background:white; border-radius:8px; padding:10px; border:1px solid #e2e8f0;">
+                                            <div style="color:#64748b; font-size:10px; font-weight:bold;">👤 COLABORADOR</div>
+                                            <select id="previewEmpSelect" style="width:100%; margin-top:4px; padding:4px; font-size:11px; border-radius:4px; border:1px solid #cbd5e1;">
+                                                <!-- Llenado dinámico -->
+                                            </select>
+                                        </div>
+
+                                        <!-- Card GPS -->
+                                        <div style="background:white; border-radius:8px; padding:10px; border:1px solid #e2e8f0;">
+                                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                                <div style="color:#64748b; font-size:10px; font-weight:bold;">🛰️ UBICACIÓN GPS</div>
+                                                <select id="previewModoGps" onchange="cambiarModoGpsPreview()" style="font-size:10px; padding:2px; border-radius:4px; border:1px solid #cbd5e1;">
+                                                    <option value="en_sede">🟢 En Punto de Trabajo</option>
+                                                    <option value="fuera_sede">🔴 Fuera de Rango</option>
+                                                    <option value="gps_real">🛰️ Mi GPS Real</option>
+                                                </select>
+                                            </div>
+                                            <div style="font-weight:bold; color:#0f172a; margin-top:4px; font-size:11px;" id="previewCoordsGps">📍 Lat: 19.42903, Lon: -99.16246</div>
+                                            <div style="color:#059669; font-size:11px; margin-top:2px;" id="previewGeocercaGps">🟢 Ubicación Lista</div>
+                                        </div>
+
+                                        <!-- Botones de Marcaje -->
+                                        <div style="display:flex; flex-direction:column; gap:6px;">
+                                            <button type="button" class="btn btn-primary btn-sm" style="width:100%; padding:10px; font-weight:bold; font-size:12px;" onclick="checarDesdePreview('Entrada')">
+                                                🟢 REGISTRAR ENTRADA
+                                            </button>
+                                            <div style="display:flex; gap:6px;">
+                                                <button type="button" class="btn btn-secondary btn-sm" style="flex:1; background:#d97706; color:white; border:none; padding:8px; font-weight:bold;" onclick="checarDesdePreview('SalidaComer')">
+                                                    🍔 COMIDA
+                                                </button>
+                                                <button type="button" class="btn btn-secondary btn-sm" style="flex:1; background:#2563EB; color:white; border:none; padding:8px; font-weight:bold;" onclick="checarDesdePreview('RegresoComer')">
+                                                    🔙 REGRESO
+                                                </button>
+                                            </div>
+                                            <button type="button" class="btn btn-secondary btn-sm" style="width:100%; background:#dc2626; color:white; border:none; padding:10px; font-weight:bold; font-size:12px;" onclick="checarDesdePreview('Salida')">
+                                                🔴 SALIDA DE JORNADA
+                                            </button>
+                                        </div>
+
+                                        <!-- Estatus -->
+                                        <div style="background:white; border-radius:8px; padding:10px; border:1px solid #e2e8f0; font-size:11px;">
+                                            <strong style="color:#0f172a;" id="previewStatusTitle">Estado: En Turno</strong>
+                                            <div style="color:#475569; margin-top:4px;" id="previewStatusDetails">
+                                                Entrada registrada con éxito.<br>
+                                                Se refleja en tiempo real en los informes.
+                                            </div>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- PESTAÑA 3: INFORMES Y REPORTES                 -->
+        <!-- ============================================== -->
+        <section id="reportes" class="tab-pane">
+            <!-- Encabezado para Impresión -->
+            <div class="print-header">
+                <h2>INFORME OFICIAL DE ASISTENCIA, PUNTUALIDAD Y GEOLOCALIZACIÓN GPS</h2>
+                <p>Sistema Centralizado GeoCheck Móvil • Generado el <span id="printDate"></span></p>
+            </div>
+
+            <!-- Filtros de Reporte -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Fecha Desde</label>
+                    <input type="date" id="filtroFechaInicio">
+                </div>
+                <div class="filter-group">
+                    <label>Fecha Hasta</label>
+                    <input type="date" id="filtroFechaFin">
+                </div>
+                <div class="filter-group">
+                    <label>Empleado</label>
+                    <select id="filtroEmpleado">
+                        <option value="">Todos los empleados</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Departamento</label>
+                    <select id="filtroDepto">
+                        <option value="">Todos los departamentos</option>
+                        <option value="Operaciones">Operaciones</option>
+                        <option value="Ventas">Ventas</option>
+                        <option value="Logística">Logística</option>
+                        <option value="Sistemas">Sistemas</option>
+                        <option value="Mantenimiento">Mantenimiento</option>
+                    </select>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+                    <button class="btn btn-primary" id="btnFiltrarReporte">🔍 Filtrar</button>
+                    <button class="btn btn-secondary" id="btnExportarCsv">📥 Exportar a Excel (.CSV)</button>
+                    <button class="btn btn-secondary" id="btnImprimirReporte">🖨️ Imprimir / Guardar PDF</button>
+                    <button class="btn btn-secondary" onclick="borrarTodosLosRegistros()" style="background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;">🗑️ Eliminar Todos los Registros</button>
+                </div>
+            </div>
+
+            <!-- Selector de Tipo de Reporte -->
+            <div style="display:flex; gap:10px; margin-bottom:1rem; border-bottom:1px solid #cbd5e1; padding-bottom:8px;">
+                <button class="btn btn-secondary report-subtab active" data-subtab="resumen">
+                    📋 1. Resumen Diario de Jornadas & Horas
+                </button>
+                <button class="btn btn-secondary report-subtab" data-subtab="bitacora">
+                    📍 2. Bitácora Detallada de Marcajes GPS
+                </button>
+                <button class="btn btn-secondary report-subtab" data-subtab="incidencias">
+                    ⚠️ 3. Auditoría de Retardos & Fuera de Zona
+                </button>
+            </div>
+
+            <!-- Tabla de Resultados -->
+            <div class="panel-card">
+                <div class="panel-body" style="padding:0;">
+                    <div class="table-responsive" id="reportTableContainer">
+                        <!-- Tabla renderizada por JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- PESTAÑA 4: CATÁLOGO DE EMPLEADOS               -->
+        <!-- ============================================== -->
+        <section id="empleados" class="tab-pane">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>👥 Catálogo de Colaboradores, Códigos y Horarios</h2>
+                    <button class="btn btn-primary btn-sm" onclick="abrirModalEmpleado()">➕ Nuevo Empleado</button>
+                </div>
+                <div class="panel-body" style="padding:0;">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nombre Completo</th>
+                                    <th>Teléfono / Contacto</th>
+                                    <th>Departamento</th>
+                                    <th>Puesto</th>
+                                    <th>Sede Asignada</th>
+                                    <th>Horario Laboral</th>
+                                    <th>Modalidad</th>
+                                    <th>Estatus</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empleadosTableBody">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- PESTAÑA 5: SUCURSALES & GEOCERCAS              -->
+        <!-- ============================================== -->
+        <section id="sucursales" class="tab-pane">
+            <div class="panel-card">
+                <div class="panel-header">
+                    <h2>🏢 Catálogo de Sucursales y Geocercas GPS</h2>
+                    <button class="btn btn-primary btn-sm" onclick="abrirModalSucursal()">➕ Nueva Sucursal</button>
+                </div>
+                <div class="panel-body" style="padding:0;">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre de Sucursal</th>
+                                    <th>Dirección Física</th>
+                                    <th>Coordenadas GPS (Lat, Lon)</th>
+                                    <th>Radio Geocerca</th>
+                                    <th>Estatus</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sucursalesTableBody">
+                                <!-- Filas dinámicas -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================== -->
+        <!-- PESTAÑA 6: CONFIGURACIÓN DEL SISTEMA           -->
+        <!-- ============================================== -->
+        <section id="configuracion" class="tab-pane">
+            <div style="display:grid; grid-template-columns:1.1fr 0.9fr; gap:1.5rem; align-items:start;">
+                
+                <!-- Formulario de Configuración -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h2>⚙️ Parámetros Generales de la Empresa</h2>
+                    </div>
+                    <div class="panel-body">
+                        <form onsubmit="guardarConfiguracion(event)">
+                            <div class="form-group" style="margin-bottom:12px;">
+                                <label>Nombre de la Empresa</label>
+                                <input type="text" id="cfgNombreEmpresa" required>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                                <div class="form-group">
+                                    <label>Tolerancia de Entrada (Minutos)</label>
+                                    <input type="number" id="cfgTolerancia" min="0" max="60" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Radio Geocerca por Defecto (Metros)</label>
+                                    <input type="number" id="cfgRadio" min="20" max="5000" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:14px;">
+                                <label>PIN de Acceso Administrador</label>
+                                <input type="password" id="cfgPinAdmin" placeholder="1234">
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:14px;">
+                                <label>🏠 URL Servidor en Red Local Wi-Fi (Oficina)</label>
+                                <input type="text" id="cfgServidorUrl" placeholder="http://192.168.1.14:5097">
+                                <small style="color:#64748b;">Dirección IP local para dispositivos conectados a la red Wi-Fi de la empresa.</small>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom:18px;">
+                                <label>📶 URL Servidor para Datos Móviles / Fuera de Oficina</label>
+                                <input type="text" id="cfgServidorDatosMovilesUrl" placeholder="https://tu-tunel.trycloudflare.com">
+                                <small style="color:#64748b;">Enlace público de internet para colaboradores con datos móviles (4G/5G). Se puede generar automáticamente con <code>iniciar_datos_moviles.bat</code>.</small>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">💾 Guardar Parámetros</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tarjeta de Estado del APK y Red -->
+                <div class="panel-card">
+                    <div class="panel-header">
+                        <h2>📲 Opciones de Conexión de Dispositivos</h2>
+                    </div>
+                    <div class="panel-body" style="font-size:0.88rem; line-height:1.5;">
+                        <div style="background:#f0fdf4; border:1px solid #10b981; border-radius:8px; padding:12px; margin-bottom:12px;">
+                            <strong style="color:#065f46;">✅ APK Android Compilado y Firmado</strong>
+                            <p style="margin-top:4px; color:#15803d;">
+                                El archivo <code>ChecadorApp.apk</code> está listo para instalarse en cualquier teléfono Android.
+                            </p>
+                            <div style="margin-top:10px;">
+                                <a href="/downloads/ChecadorApp.apk" download="ChecadorApp.apk" class="btn btn-primary btn-sm">
+                                    📥 Descargar APK Directo
+                                </a>
+                            </div>
+                        </div>
+
+                        <div style="background:#eff6ff; border:1px solid #93c5fd; border-radius:8px; padding:12px; margin-bottom:12px;">
+                            <strong style="color:#1e40af;">📶 Opción para Dispositivos con Datos Móviles (4G / 5G):</strong>
+                            <p style="color:#3b82f6; margin-top:4px; font-size:12px;">
+                                Si los empleados están fuera de la oficina o en ruta sin red Wi-Fi, ejecuta el archivo:
+                                <br/>👉 <strong><code>iniciar_datos_moviles.bat</code></strong>
+                                <br/>Te generará un enlace público seguro gratuito (Cloudflare Tunnel) con el que cualquier celular podrá checar desde cualquier parte del mundo.
+                            </p>
+                        </div>
+
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px;">
+                            <strong>💡 Cómo Alternar en la App Móvil:</strong>
+                            <p style="color:#64748b; margin-top:4px; font-size:12px;">
+                                En la App Móvil, los empleados tienen un botón en la barra superior para cambiar con un toque entre <strong>🏠 Wi-Fi</strong> y <strong>📶 Datos</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tarjeta de Mantenimiento y Limpieza de Base de Datos -->
+                <div class="panel-card" style="grid-column: 1 / -1; border: 2px solid #ef4444; margin-top: 0.5rem;">
+                    <div class="panel-header" style="background: #fef2f2; border-bottom: 1px solid #fee2e2;">
+                        <h2 style="color: #991b1b;">⚠️ Mantenimiento y Limpieza de la Base de Datos</h2>
+                        <span class="badge badge-danger">Zona de Peligro</span>
+                    </div>
+                    <div class="panel-body" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; padding: 1.5rem;">
+                        <div style="max-width: 680px;">
+                            <strong style="color: #991b1b; font-size: 1.05rem;">Limpiar Toda la Base de Datos (Dejar la Aplicación Limpia)</strong>
+                            <p style="color: #475569; font-size: 0.9rem; margin-top: 6px; line-height: 1.5;">
+                                Este botón especial elimina permanentemente <strong>todas las sucursales, todos los colaboradores y todos los registros de checadas</strong>, dejando la aplicación completamente limpia y en blanco para empezar desde cero con tu empresa.
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                            <button type="button" class="btn btn-secondary" onclick="restaurarDatosDemo()" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;">
+                                🔄 Restaurar Datos de Ejemplo
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="limpiarTodaLaBaseDeDatos()" style="background:#dc2626; color:white; border:none; padding:12px 22px; font-weight:800; font-size:0.95rem; border-radius:8px; box-shadow:0 4px 14px rgba(220,38,38,0.35); cursor:pointer;">
+                                🧨 LIMPIAR TODA LA BASE DE DATOS
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Empleado -->
+    <div class="modal-overlay" id="modalEmpleado">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modalEmpleadoTitle">Nuevo Empleado</h3>
+                <button class="modal-close" onclick="cerrarModalEmpleado()">✕</button>
+            </div>
+            <form onsubmit="guardarEmpleado(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="empId">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label>Código de Empleado</label>
+                            <input type="text" id="empCodigo" placeholder="EMP01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>PIN de Acceso Móvil</label>
+                            <input type="password" id="empPin" placeholder="1234" value="1234">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre Completo</label>
+                        <input type="text" id="empNombre" required placeholder="Ej: Juan Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label>Teléfono de Contacto</label>
+                        <input type="text" id="empTelefono" placeholder="Ej: 5512345678">
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label>Departamento</label>
+                            <input type="text" id="empDepto" required placeholder="Operaciones">
+                        </div>
+                        <div class="form-group">
+                            <label>Puesto</label>
+                            <input type="text" id="empPuesto" required placeholder="Supervisor">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Sucursal Asignada</label>
+                        <select id="empSucursal"></select>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label>Entrada</label>
+                            <input type="time" id="empHoraEntrada" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Salida</label>
+                            <input type="time" id="empHoraSalida" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Tol. (min)</label>
+                            <input type="number" id="empTolerancia" min="0" max="60" required>
+                        </div>
+                    </div>
+                    <div class="form-group" style="flex-direction:row; align-items:center; gap:8px;">
+                        <input type="checkbox" id="empPermitirRemoto" style="width:18px; height:18px;">
+                        <label for="empPermitirRemoto" style="cursor:pointer; margin:0;">Permitir marcaje remoto / en ruta (sin restricción de geocerca fija)</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModalEmpleado()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Colaborador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Sucursal -->
+    <div class="modal-overlay" id="modalSucursal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modalSucursalTitle">Nueva Sucursal</h3>
+                <button class="modal-close" onclick="cerrarModalSucursal()">✕</button>
+            </div>
+            <form onsubmit="guardarSucursal(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="sucId">
+                    <div class="form-group">
+                        <label>Nombre de la Sede / Sucursal</label>
+                        <input type="text" id="sucNombre" required placeholder="Ej: Oficina Corporativa Reforma">
+                    </div>
+                    <div class="form-group">
+                        <label>Dirección Completa</label>
+                        <input type="text" id="sucDireccion" required placeholder="Paseo de la Reforma 222, CDMX">
+                    </div>
+                    <div class="form-group">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <label style="margin:0;">Coordenadas Geográficas GPS</label>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="capturarGpsParaSucursal()" style="padding:3px 8px; font-size:11px;">📍 Usar Mi Ubicación Actual (GPS)</button>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label>Latitud GPS</label>
+                            <input type="number" step="any" id="sucLatitud" required placeholder="Ej: 21.374172">
+                        </div>
+                        <div class="form-group">
+                            <label>Longitud GPS</label>
+                            <input type="number" step="any" id="sucLongitud" required placeholder="Ej: -101.921107">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div class="form-group">
+                            <label>Radio de Geocerca (Metros)</label>
+                            <input type="number" id="sucRadio" min="20" max="10000" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Color en Mapa</label>
+                            <input type="color" id="sucColor" value="#2563EB" style="height:42px; padding:2px;">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModalSucursal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Sucursal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal para Ver Selfie de Entrada Ampliada -->
+    <div class="modal-overlay" id="modalSelfie" onclick="cerrarModalSelfie()">
+        <div class="modal-card" style="max-width:440px; text-align:center; padding:1.25rem;" onclick="event.stopPropagation()">
+            <div class="modal-header" style="justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+                <h3 id="modalSelfieTitle" style="font-size:1.1rem; color:#0f172a; margin:0;">📸 Verificación Facial de Entrada</h3>
+                <button class="modal-close" onclick="cerrarModalSelfie()">✕</button>
+            </div>
+            <div style="margin:14px 0;">
+                <img id="modalSelfieImg" src="" style="width:100%; max-height:380px; object-fit:contain; border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.25); border:3px solid #10b981;" alt="Selfie de Entrada" />
+            </div>
+            <div id="modalSelfieDetalle" style="font-size:0.88rem; color:#475569; line-height:1.5; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0; text-align:left;"></div>
+            <div style="margin-top:14px;">
+                <button type="button" class="btn btn-secondary" onclick="cerrarModalSelfie()" style="width:100%;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
